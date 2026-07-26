@@ -3,273 +3,240 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Website with Embedded Chatbot</title>
+  <title>AI Chatbot Widget</title>
   <style>
-    /* Reset & Base Demo Page Styling */
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    :root {
+      --primary-color: #2563eb;
+      --bg-color: #f8fafc;
+      --chat-bg: #ffffff;
+      --text-color: #1e293b;
+      --bot-msg-bg: #f1f5f9;
+      --user-msg-bg: #2563eb;
+      --user-msg-color: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
       margin: 0;
-      padding: 40px;
-      background-color: #f8f9fa;
-      color: #333;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     }
 
-    /* Floating Launcher Button */
-    #chat-launcher-btn {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      width: 60px;
-      height: 60px;
-      border-radius: 50%;
-      background-color: #0d6efd;
-      color: #ffffff;
-      border: none;
-      cursor: pointer;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-      font-size: 26px;
+    body {
+      background-color: var(--bg-color);
       display: flex;
-      align-items: center;
       justify-content: center;
-      transition: transform 0.2s ease, background-color 0.2s ease;
-      z-index: 9999;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
     }
 
-    #chat-launcher-btn:hover {
-      transform: scale(1.05);
-      background-color: #0b5ed7;
-    }
-
-    /* Embedded Chat Window Box */
-    #chat-widget-box {
-      display: none; /* Controlled by toggleChat() */
-      position: fixed;
-      bottom: 96px;
-      right: 24px;
-      width: 360px;
-      height: 520px;
-      background: #ffffff;
+    .chat-container {
+      width: 100%;
+      max-width: 420px;
+      height: 600px;
+      background: var(--chat-bg);
       border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      display: flex;
       flex-direction: column;
       overflow: hidden;
-      z-index: 9999;
-      border: 1px solid #e9ecef;
+      border: 1px solid #e2e8f0;
     }
 
-    /* Header Bar */
     .chat-header {
-      background: #0d6efd;
-      color: #ffffff;
-      padding: 16px;
+      background: var(--primary-color);
+      color: white;
+      padding: 16px 20px;
       font-weight: 600;
-      font-size: 16px;
+      font-size: 1.1rem;
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      gap: 10px;
     }
 
-    .chat-header-close {
-      cursor: pointer;
-      font-size: 18px;
-      opacity: 0.8;
+    .chat-header .status-dot {
+      width: 8px;
+      height: 8px;
+      background-color: #22c55e;
+      border-radius: 50%;
     }
 
-    .chat-header-close:hover {
-      opacity: 1;
-    }
-
-    /* Message Output Log */
     .chat-messages {
       flex: 1;
-      padding: 16px;
+      padding: 20px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
       gap: 12px;
-      background-color: #ffffff;
     }
 
     .message {
-      max-width: 82%;
-      padding: 10px 14px;
+      max-width: 80%;
+      padding: 12px 16px;
       border-radius: 12px;
-      font-size: 14px;
-      line-height: 1.5;
+      font-size: 0.95rem;
+      line-height: 1.4;
       word-wrap: break-word;
-      white-space: pre-wrap;
     }
 
-    .user-msg {
+    .message.user {
       align-self: flex-end;
-      background: #0d6efd;
-      color: #ffffff;
+      background-color: var(--user-msg-bg);
+      color: var(--user-msg-color);
       border-bottom-right-radius: 2px;
     }
 
-    .bot-msg {
+    .message.bot {
       align-self: flex-start;
-      background: #f1f3f5;
-      color: #212529;
+      background-color: var(--bot-msg-bg);
+      color: var(--text-color);
       border-bottom-left-radius: 2px;
     }
 
-    /* Input Footer Bar */
-    .chat-input-area {
+    .message.error {
+      background-color: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+
+    .chat-input-container {
+      padding: 16px;
+      border-top: 1px solid #e2e8f0;
       display: flex;
-      padding: 12px;
-      background: #ffffff;
-      border-top: 1px solid #dee2e6;
       gap: 8px;
+      background: #ffffff;
     }
 
-    .chat-input-area input {
+    .chat-input {
       flex: 1;
-      padding: 10px 12px;
-      border: 1px solid #ced4da;
-      border-radius: 8px;
+      padding: 12px 16px;
+      border: 1px solid #cbd5e1;
+      border-radius: 24px;
       outline: none;
-      font-size: 14px;
+      font-size: 0.95rem;
+      transition: border-color 0.2s;
     }
 
-    .chat-input-area input:focus {
-      border-color: #0d6efd;
+    .chat-input:focus {
+      border-color: var(--primary-color);
     }
 
-    .chat-input-area button {
-      padding: 10px 16px;
-      background: #0d6efd;
-      color: #ffffff;
+    .send-btn {
+      background: var(--primary-color);
+      color: white;
       border: none;
-      border-radius: 8px;
+      padding: 12px 20px;
+      border-radius: 24px;
       font-weight: 600;
       cursor: pointer;
-      transition: background-color 0.2s ease;
+      transition: background-color 0.2s;
     }
 
-    .chat-input-area button:hover {
-      background-color: #0b5ed7;
+    .send-btn:hover {
+      background-color: #1d4ed8;
+    }
+
+    .send-btn:disabled {
+      background-color: #94a3b8;
+      cursor: not-allowed;
     }
   </style>
 </head>
 <body>
 
-  <h1>My Sample Web Page</h1>
-  <p>This page demonstrates how the floating chatbot widget interacts with your FastAPI backend.</p>
-
-  <!-- Chatbot Widget HTML Structure -->
-  <button id="chat-launcher-btn" onclick="toggleChat()">💬</button>
-
-  <div id="chat-widget-box">
+  <div class="chat-container">
     <div class="chat-header">
+      <div class="status-dot"></div>
       <span>AI Assistant</span>
-      <span class="chat-header-close" onclick="toggleChat()">✕</span>
     </div>
-    <div class="chat-messages" id="chat-messages">
-      <div class="message bot-msg">Hello! How can I help you today?</div>
+
+    <div class="chat-messages" id="chatMessages">
+      <div class="message bot">
+        Hello! How can I help you today?
+      </div>
     </div>
-    <div class="chat-input-area">
-      <input type="text" id="chat-input" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
-      <button onclick="sendMessage()">Send</button>
-    </div>
+
+    <form class="chat-input-container" id="chatForm">
+      <input 
+        type="text" 
+        id="userInput" 
+        class="chat-input" 
+        placeholder="Type a message..." 
+        autocomplete="off"
+        required
+      >
+      <button type="submit" id="sendBtn" class="send-btn">Send</button>
+    </form>
   </div>
 
-  <!-- Chatbot Logic Script -->
   <script>
-    const BACKEND_URL = "http://127.0.0.1:8000/api/chat";
+    // Live Render FastAPI Backend Endpoint
+    const API_URL = "https://custom-chatbot-api-yky8.onrender.com/chat";
 
-    // System prompt defining the assistant's behavior
-    let chatHistory = [
-      { role: "system", content: "You are a polite and helpful assistant embedded on a website." }
-    ];
+    const chatMessages = document.getElementById("chatMessages");
+    const chatForm = document.getElementById("chatForm");
+    const userInput = document.getElementById("userInput");
+    const sendBtn = document.getElementById("sendBtn");
 
-    function toggleChat() {
-      const box = document.getElementById("chat-widget-box");
-      const isHidden = getComputedStyle(box).display === "none";
-      box.style.display = isHidden ? "flex" : "none";
+    function appendMessage(text, sender, isError = false) {
+      const messageDiv = document.createElement("div");
+      messageDiv.classList.add("message", sender);
+      if (isError) messageDiv.classList.add("error");
+      messageDiv.textContent = text;
+      chatMessages.appendChild(messageDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      return messageDiv;
     }
 
-    function handleKeyPress(e) {
-      if (e.key === "Enter") sendMessage();
-    }
+    chatForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      
+      const message = userInput.value.trim();
+      if (!message) return;
 
-    async function sendMessage() {
-      const input = document.getElementById("chat-input");
-      const text = input.value.trim();
-      if (!text) return;
+      // Render User Message
+      appendMessage(message, "user");
+      userInput.value = "";
+      
+      // Disable input while loading
+      userInput.disabled = true;
+      sendBtn.disabled = true;
 
-      // 1. Clear input and append user message
-      input.value = "";
-      appendMessage("user", text);
-      chatHistory.push({ role: "user", content: text });
-
-      // 2. Prepare an empty bot message bubble for real-time text streaming
-      const botMsgDiv = appendMessage("bot", "");
+      // Append temporary loading message
+      const loadingDiv = appendMessage("Thinking...", "bot");
 
       try {
-        // 3. Send entire chat history to FastAPI endpoint
-        const response = await fetch(BACKEND_URL, {
+        const response = await fetch(API_URL, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: chatHistory })
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ message: message }),
         });
 
         if (!response.ok) {
-          throw new Error("Failed to reach server");
+          throw new Error(`Server returned status ${response.status}`);
         }
 
-        // 4. Stream response body using ReadableStream
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder("utf-8");
-        let fullBotResponse = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split("\n\n");
-
-          for (let line of lines) {
-            if (line.startsWith("data: ")) {
-              const dataStr = line.replace("data: ", "").trim();
-              if (dataStr === "[DONE]") break;
-
-              try {
-                const parsed = JSON.parse(dataStr);
-                fullBotResponse += parsed.content;
-                botMsgDiv.textContent = fullBotResponse;
-                scrollToBottom();
-              } catch (err) {
-                // Ignore chunk parse errors
-              }
-            }
-          }
-        }
-
-        // 5. Store completed response in message history context
-        chatHistory.push({ role: "assistant", content: fullBotResponse });
-
-      } catch (err) {
-        botMsgDiv.textContent = "Error: Could not establish connection to backend server.";
+        const data = await response.json();
+        
+        // Update loading message with API response
+        loadingDiv.textContent = data.response || data.reply || "No response content.";
+      } catch (error) {
+        console.error("Chat error:", error);
+        loadingDiv.remove();
+        appendMessage(
+          "Sorry, could not connect to the backend. (If the server was sleeping, wait ~30s and try again!)",
+          "bot",
+          true
+        );
+      } finally {
+        userInput.disabled = false;
+        sendBtn.disabled = false;
+        userInput.focus();
       }
-    }
-
-    function appendMessage(sender, text) {
-      const container = document.getElementById("chat-messages");
-      const div = document.createElement("div");
-      div.className = `message ${sender === "user" ? "user-msg" : "bot-msg"}`;
-      div.textContent = text;
-      container.appendChild(div);
-      scrollToBottom();
-      return div;
-    }
-
-    function scrollToBottom() {
-      const container = document.getElementById("chat-messages");
-      container.scrollTop = container.scrollHeight;
-    }
+    });
   </script>
-
 </body>
 </html>
