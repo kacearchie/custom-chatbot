@@ -4,6 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Custom Floating AI Widget</title>
+
+  <!-- Marked.js for Markdown Parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- Highlight.js for Syntax Highlighting (GitHub Dark Theme) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
   <style>
     :root {
       --primary-color: #2563eb;
@@ -24,13 +32,9 @@
 
     body {
       background-color: var(--bg-color);
-      /* Full page bg is optional now that it's a widget */
     }
 
-    /* ----------------------------------------------- */
-    /* 1. NEW: Widget Wrapper & Toggle Animation      */
-    /* ----------------------------------------------- */
-    
+    /* Floating Widget Container */
     .chat-widget-wrapper {
       position: fixed;
       bottom: 20px;
@@ -42,7 +46,7 @@
       gap: 15px;
     }
 
-    /* Initial state of the chat window: Hidden, slightly scaled down */
+    /* Chat Window Container */
     .chat-container {
       width: 380px;
       height: 600px;
@@ -54,23 +58,17 @@
       overflow: hidden;
       border: 1px solid #e2e8f0;
       
-      /* Toggle transition settings */
       opacity: 0;
-      pointer-events: none; /* User can't click it when hidden */
+      pointer-events: none;
       transform: scale(0.9) translateY(20px);
       transition: transform 0.3s ease, opacity 0.3s ease;
     }
 
-    /* Class added via JS to show the chat window */
     .chat-container.open {
       opacity: 1;
       pointer-events: auto;
       transform: scale(1) translateY(0);
     }
-
-    /* ----------------------------------------------- */
-    /* existing UI styles (slight tweaks)             */
-    /* ----------------------------------------------- */
 
     .chat-header {
       background: var(--primary-color);
@@ -104,29 +102,73 @@
       gap: 12px;
     }
 
-    .message { max-width: 80%; padding: 12px 16px; border-radius: 12px; font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; }
-    .message.user { align-self: flex-end; background-color: var(--user-msg-bg); color: var(--user-msg-color); border-bottom-right-radius: 2px; }
-    .message.bot { align-self: flex-start; background-color: var(--bot-msg-bg); color: var(--text-color); border-bottom-left-radius: 2px; }
-    .message.error { background-color: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .message {
+      max-width: 85%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      line-height: 1.4;
+      word-wrap: break-word;
+    }
 
-    /* ----------------------------------------------- */
-    /* 2. NEW: Typing Dots Animation Styles           */
-    /* ----------------------------------------------- */
-    
+    .message.user {
+      align-self: flex-end;
+      background-color: var(--user-msg-bg);
+      color: var(--user-msg-color);
+      border-bottom-right-radius: 2px;
+    }
+
+    .message.bot {
+      align-self: flex-start;
+      background-color: var(--bot-msg-bg);
+      color: var(--text-color);
+      border-bottom-left-radius: 2px;
+    }
+
+    .message.error {
+      background-color: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+
+    /* Markdown & Code Block Styles */
+    .message.bot p { margin-bottom: 8px; }
+    .message.bot p:last-child { margin-bottom: 0; }
+    .message.bot ul, .message.bot ol { margin-left: 20px; margin-bottom: 8px; }
+    .message.bot code {
+      font-family: 'Fira Code', Consolas, Monaco, monospace;
+      font-size: 0.85em;
+      background-color: rgba(0, 0, 0, 0.08);
+      padding: 2px 5px;
+      border-radius: 4px;
+    }
+    .message.bot pre {
+      margin: 8px 0;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+    .message.bot pre code {
+      display: block;
+      padding: 12px;
+      background: none;
+      color: inherit;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    /* Typing Dots Animation */
     .message.typing {
       align-self: flex-start;
       background-color: var(--bot-msg-bg);
       padding: 10px 16px;
       border-radius: 12px;
       border-bottom-left-radius: 2px;
-      display: none; /* JS will set to flex/none */
+      display: none;
       align-items: center;
       gap: 5px;
     }
 
-    .message.typing.visible {
-      display: flex; /* Show when 'visible' class is active */
-    }
+    .message.typing.visible { display: flex; }
 
     .message.typing span {
       width: 8px;
@@ -137,7 +179,6 @@
       animation: typing 1.4s infinite ease-in-out both;
     }
 
-    /* Offset animations for 'bouncing' effect */
     .message.typing span:nth-child(1) { animation-delay: -0.32s; }
     .message.typing span:nth-child(2) { animation-delay: -0.16s; }
 
@@ -146,20 +187,14 @@
       40% { transform: scale(1); opacity: 1; }
     }
 
-    /* ----------------------------------------------- */
-    /* Input UI styles (slight tweaks)                */
-    /* ----------------------------------------------- */
-
+    /* Input Bar */
     .chat-input-container { padding: 16px; border-top: 1px solid #e2e8f0; display: flex; gap: 8px; background: #ffffff; }
     .chat-input { flex: 1; padding: 12px 16px; border: 1px solid #cbd5e1; border-radius: 24px; outline: none; font-size: 0.95rem; }
     .chat-input:focus { border-color: var(--primary-color); }
     .send-btn { background: var(--primary-color); color: white; border: none; padding: 12px 20px; border-radius: 24px; font-weight: 600; cursor: pointer; }
     .send-btn:disabled { background-color: #94a3b8; cursor: not-allowed; }
 
-    /* ----------------------------------------------- */
-    /* 3. NEW: Floating Bubble Button Styles          */
-    /* ----------------------------------------------- */
-    
+    /* Floating Launcher Button */
     .chat-bubble-launcher {
       width: 60px;
       height: 60px;
@@ -185,19 +220,7 @@
 </head>
 <body>
 
-  <!-- Example Background Content -->
-  <div style="padding: 50px; text-align: center; color: #64748b;">
-    <h1>Main Website Content</h1>
-    <p>The floating chatbot widget is in the bottom right.</p>
-  </div>
-
-
-  <!-- ============================================== -->
-  <!-- 4. HTML structure for the new widget           -->
-  <!-- ============================================== -->
   <div class="chat-widget-wrapper" id="chatWidgetWrapper">
-    
-    <!-- The Chat Window (Hidden by default) -->
     <div class="chat-container" id="chatContainer">
       <div class="chat-header">
         <div class="header-info">
@@ -212,9 +235,6 @@
           Hello! I'm ready. How can I help you today?
         </div>
         
-        <!-- ============================================== -->
-        <!-- 5. NEW: Static HTML for the typing animation  -->
-        <!-- ============================================== -->
         <div class="message typing" id="typingIndicator">
           <span></span>
           <span></span>
@@ -235,71 +255,65 @@
       </form>
     </div>
 
-    <!-- 6. NEW: The Floating Bubble Launcher Button -->
-    <button class="chat-bubble-launcher" id="bubbleLauncher">
-      💬 <!-- You can use an icon font like FontAwesome here instead -->
-    </button>
+    <button class="chat-bubble-launcher" id="bubbleLauncher">💬</button>
   </div>
-
 
   <script>
     // Live Render FastAPI Backend Endpoint
     const API_URL = "https://custom-chatbot-api-yky8.onrender.com/chat";
 
-    // Core Chat Elements
+    // Marked.js Configuration
+    marked.setOptions({
+      breaks: true,
+      gfm: true
+    });
+
     const chatMessages = document.getElementById("chatMessages");
     const chatForm = document.getElementById("chatForm");
     const userInput = document.getElementById("userInput");
     const sendBtn = document.getElementById("sendBtn");
     const clearBtn = document.getElementById("clearBtn");
     
-    // 7. NEW: Widget/Animation Elements
-    const chatWidgetWrapper = document.getElementById("chatWidgetWrapper");
     const chatContainer = document.getElementById("chatContainer");
     const bubbleLauncher = document.getElementById("bubbleLauncher");
     const typingIndicator = document.getElementById("typingIndicator");
 
-    // History & Context
     let conversationHistory = [];
-    const MAX_HISTORY_MESSAGES = 10; 
+    const MAX_HISTORY_MESSAGES = 10;
 
-    // --------------------------------------------------
-    // 8. NEW: Toggle Widget Functionality
-    // --------------------------------------------------
-    
     function toggleChatWindow() {
       const isOpen = chatContainer.classList.contains("open");
       if (isOpen) {
         chatContainer.classList.remove("open");
-        bubbleLauncher.textContent = "💬"; // Change icon back to chat bubble
+        bubbleLauncher.textContent = "💬";
       } else {
         chatContainer.classList.add("open");
-        bubbleLauncher.textContent = "✕"; // Change icon to close 'X'
-        userInput.focus(); // Focus input immediately
+        bubbleLauncher.textContent = "✕";
+        userInput.focus();
       }
     }
 
     bubbleLauncher.addEventListener("click", toggleChatWindow);
 
-    // --------------------------------------------------
-
     function appendMessage(text, sender, isError = false) {
       const messageDiv = document.createElement("div");
       messageDiv.classList.add("message", sender);
       if (isError) messageDiv.classList.add("error");
-      messageDiv.textContent = text;
+
+      if (sender === "bot" && !isError) {
+        messageDiv.innerHTML = marked.parse(text);
+        messageDiv.querySelectorAll("pre code").forEach((block) => {
+          hljs.highlightElement(block);
+        });
+      } else {
+        messageDiv.textContent = text;
+      }
       
-      // Inserts the new message *before* the permanent typing indicator element
       chatMessages.insertBefore(messageDiv, typingIndicator);
-      
       chatMessages.scrollTop = chatMessages.scrollHeight;
       return messageDiv;
     }
 
-    // --------------------------------------------------
-    // 9. NEW: Show/Hide Typing Indicator Functions
-    // --------------------------------------------------
-    
     function showTypingIndicator() {
       typingIndicator.classList.add("visible");
       chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -309,11 +323,8 @@
       typingIndicator.classList.remove("visible");
     }
 
-    // --------------------------------------------------
-
     clearBtn.addEventListener("click", () => {
       conversationHistory = [];
-      // Clear all messages *except* the typing indicator
       const allMessages = chatMessages.querySelectorAll(".message:not(.typing)");
       allMessages.forEach(msg => msg.remove());
       appendMessage("Conversation reset! How can I help you?", "bot");
@@ -329,11 +340,8 @@
       conversationHistory.push({ role: "user", content: text });
       userInput.value = "";
       
-      // UI Lock
       userInput.disabled = true;
       sendBtn.disabled = true;
-
-      // 10. NEW: Activate Typing dots while waiting
       showTypingIndicator();
 
       const trimmedHistory = conversationHistory.slice(-MAX_HISTORY_MESSAGES);
@@ -347,7 +355,6 @@
           body: JSON.stringify({ messages: trimmedHistory }),
         });
 
-        // 11. NEW: Hide typing dots immediately after the API responds
         hideTypingIndicator();
 
         if (!response.ok) {
@@ -362,10 +369,7 @@
 
       } catch (error) {
         console.error("Chat error:", error);
-        
-        // Ensure indicator hides if an error occurs
         hideTypingIndicator();
-        
         conversationHistory.pop();
         appendMessage("Could not connect to the assistant.", "bot", true);
       } finally {
