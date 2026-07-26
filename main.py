@@ -1,59 +1,65 @@
 import os
-import json
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import List
 from openai import OpenAI
 
+# Initialize FastAPI application
 app = FastAPI(title="Custom Chatbot API")
 
-# Allow web browsers from any domain to connect during development
+# Configure CORS Middleware
+# Allows frontend scripts from any origin (local files, localhost, live domains)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Restrict to your domain in production (e.g., ["https://yourwebsite.com"])
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Initialize OpenAI client using the environment variable set in Step 1
+# Initialize OpenAI client using the environment variable OPENAI_API_KEY
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
-class Message(BaseModel):
-    role: str
-    content: str
 
+# Define the request body structure
 class ChatRequest(BaseModel):
-    messages: List[Message]
+    message: str
+
 
 @app.get("/")
-def read_root():
-    return {"status": "Chatbot backend is running!"}
+def health_check():
+    """Simple health check endpoint to verify backend is up."""
+    return {"status": "ok", "message": "FastAPI Chatbot Backend is running."}
 
-@app.post("/api/chat")
-async def chat_endpoint(request: ChatRequest):
-    if not os.environ.get("OPENAI_API_KEY"):
-        raise HTTPException(status_code=500, detail="OPENAI_API_KEY environment variable is missing.")
+
+@app.post("/chat")
+def chat_endpoint(request: ChatRequest):
+    """Chat endpoint that forwards user messages to OpenAI and returns the AI's response."""
+    user_message = request.message.strip()
+
+    if not user_message:
+        raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
     try:
-        # Request a streaming response from gpt-4o-mini
-        response = client.chat.completions.create(
+        # Call OpenAI Chat Completion API
+        completion = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": m.role, "content": m.content} for m in request.messages],
-            stream=True
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful, friendly, and concise AI assistant integrated into a web widget.",
+                },
+                {"role": "user", "content": user_message},
+            ],
+            temperature=0.7,
+            max_tokens=500,
         )
 
-        def event_stream():
-            for chunk in response:
-                if chunk.choices and chunk.choices[0].delta.content:
-                    content = chunk.choices[0].delta.content
-                    # Format data as Server-Sent Event standard
-                    yield f"data: {json.dumps({'content': content})}\n\n"
-            yield "data: [DONE]\n\n"
-
-        return StreamingResponse(event_stream(), media_type="text/event-stream")
+        ai_response = completion.choices[0].message.content
+        return {"response": ai_response}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Handle API errors or credential issues gracefully
+        raise HTTPException(
+            status_code=500, detail=f"An error occurred while contacting OpenAI: {str(e)}"
+        )
