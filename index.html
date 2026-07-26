@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Chatbot Widget</title>
+  <title>AI Chatbot Widget with History</title>
   <style>
     :root {
       --primary-color: #2563eb;
@@ -52,6 +52,12 @@
       font-size: 1.1rem;
       display: flex;
       align-items: center;
+      justify-content: space-between;
+    }
+
+    .chat-header .header-info {
+      display: flex;
+      align-items: center;
       gap: 10px;
     }
 
@@ -60,6 +66,21 @@
       height: 8px;
       background-color: #22c55e;
       border-radius: 50%;
+    }
+
+    .clear-btn {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .clear-btn:hover {
+      background: rgba(255, 255, 255, 0.35);
     }
 
     .chat-messages {
@@ -115,7 +136,6 @@
       border-radius: 24px;
       outline: none;
       font-size: 0.95rem;
-      transition: border-color 0.2s;
     }
 
     .chat-input:focus {
@@ -130,11 +150,6 @@
       border-radius: 24px;
       font-weight: 600;
       cursor: pointer;
-      transition: background-color 0.2s;
-    }
-
-    .send-btn:hover {
-      background-color: #1d4ed8;
     }
 
     .send-btn:disabled {
@@ -147,13 +162,16 @@
 
   <div class="chat-container">
     <div class="chat-header">
-      <div class="status-dot"></div>
-      <span>AI Assistant</span>
+      <div class="header-info">
+        <div class="status-dot"></div>
+        <span>AI Assistant</span>
+      </div>
+      <button id="clearBtn" class="clear-btn">Reset</button>
     </div>
 
     <div class="chat-messages" id="chatMessages">
       <div class="message bot">
-        Hello! How can I help you today?
+        Hello! I'm ready. How can I help you today?
       </div>
     </div>
 
@@ -171,13 +189,16 @@
   </div>
 
   <script>
-    // Live Render FastAPI Backend Endpoint
     const API_URL = "https://custom-chatbot-api-yky8.onrender.com/chat";
 
     const chatMessages = document.getElementById("chatMessages");
     const chatForm = document.getElementById("chatForm");
     const userInput = document.getElementById("userInput");
     const sendBtn = document.getElementById("sendBtn");
+    const clearBtn = document.getElementById("clearBtn");
+
+    // Array storing ongoing dialogue history
+    let conversationHistory = [];
 
     function appendMessage(text, sender, isError = false) {
       const messageDiv = document.createElement("div");
@@ -189,21 +210,30 @@
       return messageDiv;
     }
 
+    // Reset Chat Memory
+    clearBtn.addEventListener("click", () => {
+      conversationHistory = [];
+      chatMessages.innerHTML = `
+        <div class="message bot">
+          Conversation reset! How can I help you?
+        </div>
+      `;
+    });
+
     chatForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       
-      const message = userInput.value.trim();
-      if (!message) return;
+      const text = userInput.value.trim();
+      if (!text) return;
 
-      // Render User Message
-      appendMessage(message, "user");
+      // Render User Message & append to state array
+      appendMessage(text, "user");
+      conversationHistory.push({ role: "user", content: text });
       userInput.value = "";
       
-      // Disable input while loading
       userInput.disabled = true;
       sendBtn.disabled = true;
 
-      // Append temporary loading message
       const loadingDiv = appendMessage("Thinking...", "bot");
 
       try {
@@ -212,25 +242,27 @@
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ message: message }),
+          body: JSON.stringify({ messages: conversationHistory }),
         });
 
         if (!response.ok) {
-          throw new Error(`Server returned status ${response.status}`);
+          throw new Error(`Server status ${response.status}`);
         }
 
         const data = await response.json();
+        const replyText = data.response || "No response received.";
         
-        // Update loading message with API response
-        loadingDiv.textContent = data.response || data.reply || "No response content.";
+        loadingDiv.textContent = replyText;
+
+        // Save bot response to ongoing history
+        conversationHistory.push({ role: "assistant", content: replyText });
+
       } catch (error) {
         console.error("Chat error:", error);
         loadingDiv.remove();
-        appendMessage(
-          "Sorry, could not connect to the backend. (If the server was sleeping, wait ~30s and try again!)",
-          "bot",
-          true
-        );
+        // Remove failed user turn from memory
+        conversationHistory.pop();
+        appendMessage("Could not connect to the assistant.", "bot", true);
       } finally {
         userInput.disabled = false;
         sendBtn.disabled = false;

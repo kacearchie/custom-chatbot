@@ -1,14 +1,13 @@
 import os
+from typing import List
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI
 
-# Initialize FastAPI application
-app = FastAPI(title="Custom Chatbot API")
+app = FastAPI(title="Custom Chatbot API with History")
 
-# Configure CORS Middleware
-# Allows frontend scripts from any origin (local files, localhost, live domains)
+# Enable CORS for frontend communication
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,40 +16,45 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize OpenAI client using the environment variable OPENAI_API_KEY
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 
-# Define the request body structure
+# Structure for individual chat messages
+class Message(BaseModel):
+    role: str  # "system", "user", or "assistant"
+    content: str
+
+
+# Request body expecting full message history
 class ChatRequest(BaseModel):
-    message: str
+    messages: List[Message]
 
 
 @app.get("/")
 def health_check():
-    """Simple health check endpoint to verify backend is up."""
     return {"status": "ok", "message": "FastAPI Chatbot Backend is running."}
 
 
 @app.post("/chat")
 def chat_endpoint(request: ChatRequest):
-    """Chat endpoint that forwards user messages to OpenAI and returns the AI's response."""
-    user_message = request.message.strip()
+    if not request.messages:
+        raise HTTPException(status_code=400, detail="Message history cannot be empty.")
 
-    if not user_message:
-        raise HTTPException(status_code=400, detail="Message cannot be empty.")
+    # Base system instructions
+    system_instruction = {
+        "role": "system",
+        "content": "You are a helpful, friendly, and concise AI assistant integrated into a web widget.",
+    }
+
+    # Prepend system prompt to user conversation history
+    full_conversation = [system_instruction] + [
+        msg.model_dump() for msg in request.messages
+    ]
 
     try:
-        # Call OpenAI Chat Completion API
         completion = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a helpful, friendly, and concise AI assistant integrated into a web widget.",
-                },
-                {"role": "user", "content": user_message},
-            ],
+            messages=full_conversation,
             temperature=0.7,
             max_tokens=500,
         )
@@ -59,7 +63,6 @@ def chat_endpoint(request: ChatRequest):
         return {"response": ai_response}
 
     except Exception as e:
-        # Handle API errors or credential issues gracefully
         raise HTTPException(
-            status_code=500, detail=f"An error occurred while contacting OpenAI: {str(e)}"
+            status_code=500, detail=f"Error processing request: {str(e)}"
         )
