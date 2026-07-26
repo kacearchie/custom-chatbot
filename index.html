@@ -200,6 +200,62 @@
     // Array storing ongoing dialogue history
     let conversationHistory = [];
 
+    // Set how many recent messages to retain in context
+const MAX_HISTORY_MESSAGES = 10;
+
+chatForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const text = userInput.value.trim();
+  if (!text) return;
+
+  // Render User Message & append to full history array
+  appendMessage(text, "user");
+  conversationHistory.push({ role: "user", content: text });
+  userInput.value = "";
+
+  userInput.disabled = true;
+  sendBtn.disabled = true;
+
+  const loadingDiv = appendMessage("Thinking...", "bot");
+
+  // Trim to the last MAX_HISTORY_MESSAGES before sending to backend
+  const trimmedHistory = conversationHistory.slice(-MAX_HISTORY_MESSAGES);
+
+  try {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      // Pass the sliced array instead of full conversation history
+      body: JSON.stringify({ messages: trimmedHistory }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Server status ${response.status}`);
+    }
+
+    const data = await response.json();
+    const replyText = data.response || "No response received.";
+
+    loadingDiv.textContent = replyText;
+
+    // Append bot response to persistent history
+    conversationHistory.push({ role: "assistant", content: replyText });
+
+  } catch (error) {
+    console.error("Chat error:", error);
+    loadingDiv.remove();
+    conversationHistory.pop(); // Remove failed user turn
+    appendMessage("Could not connect to the assistant.", "bot", true);
+  } finally {
+    userInput.disabled = false;
+    sendBtn.disabled = false;
+    userInput.focus();
+  }
+});
+
     function appendMessage(text, sender, isError = false) {
       const messageDiv = document.createElement("div");
       messageDiv.classList.add("message", sender);
