@@ -3,381 +3,282 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Custom Floating AI Widget</title>
-
-  <!-- Marked.js for Markdown Parsing -->
+  <title>Health Sciences Interactive Learning Hub</title>
+  
+  <!-- Markdown & Code Highlighting Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
-  <!-- Highlight.js for Syntax Highlighting (GitHub Dark Theme) -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
 
   <style>
     :root {
-      --primary-color: #2563eb;
-      --bg-color: #f1f5f9;
-      --chat-bg: #ffffff;
-      --text-color: #1e293b;
-      --bot-msg-bg: #f3f4f6;
-      --user-msg-bg: #2563eb;
-      --user-msg-color: #ffffff;
+      --primary: #0284c7;
+      --primary-dark: #0369a1;
+      --bg-slate: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #1e293b;
+      --border: #e2e8f0;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: var(--bg-slate); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; }
 
-    body {
-      background-color: var(--bg-color);
-    }
+    /* Navigation Header */
+    header { background: var(--primary-dark); color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+    header h1 { font-size: 1.4rem; font-weight: 600; }
+    select { padding: 0.5rem 1rem; border-radius: 6px; border: none; font-size: 0.95rem; background: white; color: var(--text-main); cursor: pointer; }
 
-    /* Floating Widget Container */
-    .chat-widget-wrapper {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      z-index: 1000;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 15px;
-    }
+    /* Main Grid Layout */
+    .container { display: grid; grid-template-columns: 1fr; gap: 2rem; max-width: 1200px; margin: 2rem auto; padding: 0 1.5rem; width: 100%; flex: 1; }
 
-    /* Chat Window Container */
-    .chat-container {
-      width: 380px;
-      height: 600px;
-      background: var(--chat-bg);
-      border-radius: 16px;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      border: 1px solid #e2e8f0;
-      
-      opacity: 0;
-      pointer-events: none;
-      transform: scale(0.9) translateY(20px);
-      transition: transform 0.3s ease, opacity 0.3s ease;
-    }
+    /* Card Panels */
+    .panel { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 1.8rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .panel h2 { margin-bottom: 1rem; color: var(--primary-dark); font-size: 1.3rem; border-bottom: 2px solid var(--bg-slate); padding-bottom: 0.5rem; }
 
-    .chat-container.open {
-      opacity: 1;
-      pointer-events: auto;
-      transform: scale(1) translateY(0);
-    }
+    /* Notes & Diagrams */
+    .diagram-box { text-align: center; margin: 1.5rem 0; background: var(--bg-slate); padding: 1rem; border-radius: 8px; border: 1px solid var(--border); }
+    .diagram-box img { max-width: 100%; height: auto; border-radius: 6px; }
+    .diagram-caption { font-size: 0.85rem; color: #64748b; margin-top: 0.5rem; }
 
-    .chat-header {
-      background: var(--primary-color);
-      color: white;
-      padding: 16px 20px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
+    /* MCQ Quiz Engine Styles */
+    .quiz-question { margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+    .quiz-question p { font-weight: 600; margin-bottom: 0.8rem; }
+    .options-group { display: flex; flex-direction: column; gap: 0.5rem; }
+    .option-label { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 1rem; background: var(--bg-slate); border-radius: 6px; cursor: pointer; transition: 0.2s; border: 1px solid transparent; }
+    .option-label:hover { background: #e0f2fe; border-color: #7dd3fc; }
+    
+    .btn-submit { background: var(--primary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; font-weight: 600; cursor: pointer; margin-top: 1rem; }
+    .btn-submit:hover { background: var(--primary-dark); }
+    
+    #quiz-results { margin-top: 1.5rem; font-size: 0.95rem; }
+    .res-pass { color: #16a34a; font-weight: 600; margin-top: 0.5rem; }
+    .res-fail { color: #dc2626; font-weight: 600; margin-top: 0.5rem; }
+    .res-exp { font-size: 0.85rem; color: #475569; margin-left: 1.2rem; margin-bottom: 0.8rem; }
 
-    .header-info { display: flex; align-items: center; gap: 8px; }
-    .status-dot { width: 8px; height: 8px; background-color: #22c55e; border-radius: 50%; }
+    /* Floating AI Widget Button & Launcher */
+    #chat-launcher { position: fixed; bottom: 25px; right: 25px; background: var(--primary); color: white; border: none; width: 60px; height: 60px; border-radius: 50%; font-size: 1.5rem; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2); transition: transform 0.2s; z-index: 999; }
+    #chat-launcher:hover { transform: scale(1.08); }
 
-    .clear-btn {
-      background: rgba(255, 255, 255, 0.2);
-      border: none;
-      color: white;
-      padding: 4px 10px;
-      border-radius: 12px;
-      font-size: 0.75rem;
-      cursor: pointer;
-    }
+    /* Chat Drawer Window */
+    #chat-window { position: fixed; bottom: 95px; right: 25px; width: 380px; height: 520px; background: white; border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); display: none; flex-direction: column; z-index: 1000; overflow: hidden; }
+    #chat-header { background: var(--primary-dark); color: white; padding: 1rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+    #chat-close { background: none; border: none; color: white; font-size: 1.2rem; cursor: pointer; }
+    #chat-messages { flex: 1; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; gap: 0.8rem; background: var(--bg-slate); font-size: 0.9rem; }
+    
+    .msg { max-width: 85%; padding: 0.7rem 1rem; border-radius: 8px; line-height: 1.4; }
+    .msg.user { background: var(--primary); color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+    .msg.assistant { background: white; border: 1px solid var(--border); color: var(--text-main); align-self: flex-start; border-bottom-left-radius: 2px; }
 
-    .chat-messages {
-      flex: 1;
-      padding: 20px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
+    #chat-input-area { display: flex; padding: 0.8rem; border-top: 1px solid var(--border); background: white; gap: 0.5rem; }
+    #chat-input { flex: 1; padding: 0.6rem; border: 1px solid var(--border); border-radius: 6px; outline: none; }
+    #chat-send { background: var(--primary); color: white; border: none; padding: 0.6rem 1rem; border-radius: 6px; cursor: pointer; }
 
-    .message {
-      max-width: 85%;
-      padding: 12px 16px;
-      border-radius: 12px;
-      font-size: 0.95rem;
-      line-height: 1.4;
-      word-wrap: break-word;
-    }
-
-    .message.user {
-      align-self: flex-end;
-      background-color: var(--user-msg-bg);
-      color: var(--user-msg-color);
-      border-bottom-right-radius: 2px;
-    }
-
-    .message.bot {
-      align-self: flex-start;
-      background-color: var(--bot-msg-bg);
-      color: var(--text-color);
-      border-bottom-left-radius: 2px;
-    }
-
-    .message.error {
-      background-color: #fef2f2;
-      color: #991b1b;
-      border: 1px solid #fecaca;
-    }
-
-    /* Markdown & Code Block Styles */
-    .message.bot p { margin-bottom: 8px; }
-    .message.bot p:last-child { margin-bottom: 0; }
-    .message.bot ul, .message.bot ol { margin-left: 20px; margin-bottom: 8px; }
-    .message.bot code {
-      font-family: 'Fira Code', Consolas, Monaco, monospace;
-      font-size: 0.85em;
-      background-color: rgba(0, 0, 0, 0.08);
-      padding: 2px 5px;
-      border-radius: 4px;
-    }
-    .message.bot pre {
-      margin: 8px 0;
-      border-radius: 8px;
-      overflow-x: auto;
-    }
-    .message.bot pre code {
-      display: block;
-      padding: 12px;
-      background: none;
-      color: inherit;
-      font-size: 0.85rem;
-      line-height: 1.4;
-    }
-
-    /* Typing Dots Animation */
-    .message.typing {
-      align-self: flex-start;
-      background-color: var(--bot-msg-bg);
-      padding: 10px 16px;
-      border-radius: 12px;
-      border-bottom-left-radius: 2px;
-      display: none;
-      align-items: center;
-      gap: 5px;
-    }
-
-    .message.typing.visible { display: flex; }
-
-    .message.typing span {
-      width: 8px;
-      height: 8px;
-      background-color: #94a3b8;
-      border-radius: 50%;
-      display: block;
-      animation: typing 1.4s infinite ease-in-out both;
-    }
-
-    .message.typing span:nth-child(1) { animation-delay: -0.32s; }
-    .message.typing span:nth-child(2) { animation-delay: -0.16s; }
-
-    @keyframes typing {
-      0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
-      40% { transform: scale(1); opacity: 1; }
-    }
-
-    /* Input Bar */
-    .chat-input-container { padding: 16px; border-top: 1px solid #e2e8f0; display: flex; gap: 8px; background: #ffffff; }
-    .chat-input { flex: 1; padding: 12px 16px; border: 1px solid #cbd5e1; border-radius: 24px; outline: none; font-size: 0.95rem; }
-    .chat-input:focus { border-color: var(--primary-color); }
-    .send-btn { background: var(--primary-color); color: white; border: none; padding: 12px 20px; border-radius: 24px; font-weight: 600; cursor: pointer; }
-    .send-btn:disabled { background-color: #94a3b8; cursor: not-allowed; }
-
-    /* Floating Launcher Button */
-    .chat-bubble-launcher {
-      width: 60px;
-      height: 60px;
-      background-color: var(--primary-color);
-      border-radius: 50%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      color: white;
-      font-size: 28px;
-      cursor: pointer;
-      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-      border: none;
-      outline: none;
-    }
-
-    .chat-bubble-launcher:hover {
-      transform: scale(1.05);
-      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+    @media (min-width: 768px) {
+      .container { grid-template-columns: 1fr 1fr; }
     }
   </style>
 </head>
 <body>
 
-  <div class="chat-widget-wrapper" id="chatWidgetWrapper">
-    <div class="chat-container" id="chatContainer">
-      <div class="chat-header">
-        <div class="header-info">
-          <div class="status-dot"></div>
-          <span>AI Assistant</span>
-        </div>
-        <button id="clearBtn" class="clear-btn">Reset</button>
-      </div>
+  <header>
+    <h1>Health Sciences Learning Hub</h1>
+    <div>
+      <label for="course-select" style="margin-right: 0.5rem; font-size: 0.9rem;">Course:</label>
+      <select id="course-select" onchange="switchCourse()">
+        <option value="phs">Pharmaceutical Sciences (PHS)</option>
+        <option value="nursing">Nursing & Patient Care</option>
+        <option value="med">Clinical Medicine</option>
+        <option value="mls">Medical Lab Science</option>
+      </select>
+    </div>
+  </header>
 
-      <div class="chat-messages" id="chatMessages">
-        <div class="message bot">
-          Hello! I'm ready. How can I help you today?
-        </div>
+  <div class="container">
+    <!-- Left Column: Notes & Visual Diagram -->
+    <div class="panel">
+      <h2 id="module-title">Pharmacokinetics: ADME Principles</h2>
+      <div id="module-content">
+        <p><b>Pharmacokinetics</b> quantifies how the human body processes chemical drugs through four distinct stages: <b>Absorption, Distribution, Metabolism, and Excretion (ADME)</b>.</p>
         
-        <div class="message typing" id="typingIndicator">
-          <span></span>
-          <span></span>
-          <span></span>
+        <ul style="margin: 1rem 0 1rem 1.5rem; line-height: 1.6;">
+          <li><b>Absorption:</b> Movement of drug from route of entry into plasma.</li>
+          <li><b>Distribution:</b> Dispersion throughout body fluids and tissue spaces.</li>
+          <li><b>Metabolism:</b> Biotransformation into active or inactive metabolites (primarily via Hepatic CYP450 enzymes).</li>
+          <li><b>Excretion:</b> Clearance from the body (principally Renal filtration).</li>
+        </ul>
+
+        <div class="diagram-box">
+          <svg viewBox="0 0 400 120" style="width:100%; max-height:120px;">
+            <rect x="10" y="35" width="80" height="50" rx="8" fill="#0284c7" />
+            <text x="50" y="65" fill="white" font-size="12" text-anchor="middle">Absorption</text>
+            <path d="M 90 60 L 110 60" stroke="#0369a1" stroke-width="3" marker-end="url(#arrow)"/>
+            
+            <rect x="110" y="35" width="80" height="50" rx="8" fill="#0284c7" />
+            <text x="150" y="65" fill="white" font-size="12" text-anchor="middle">Distribution</text>
+            <path d="M 190 60 L 210 60" stroke="#0369a1" stroke-width="3"/>
+            
+            <rect x="210" y="35" width="80" height="50" rx="8" fill="#0284c7" />
+            <text x="250" y="65" fill="white" font-size="12" text-anchor="middle">Metabolism</text>
+            <path d="M 290 60 L 310 60" stroke="#0369a1" stroke-width="3"/>
+            
+            <rect x="310" y="35" width="80" height="50" rx="8" fill="#0284c7" />
+            <text x="350" y="65" fill="white" font-size="12" text-anchor="middle">Excretion</text>
+          </svg>
+          <div class="diagram-caption">Systemic Pathway of Pharmacokinetics (ADME)</div>
         </div>
       </div>
-
-      <form class="chat-input-container" id="chatForm">
-        <input 
-          type="text" 
-          id="userInput" 
-          class="chat-input" 
-          placeholder="Type a message..." 
-          autocomplete="off"
-          required
-        >
-        <button type="submit" id="sendBtn" class="send-btn">Send</button>
-      </form>
     </div>
 
-    <button class="chat-bubble-launcher" id="bubbleLauncher">💬</button>
+    <!-- Right Column: Interactive Quiz Engine -->
+    <div class="panel">
+      <h2>Knowledge Check & MCQ Quiz</h2>
+      <form id="quiz-form">
+        <div class="quiz-question">
+          <p>1. Which biological organ serves as the primary site for enzymatic drug metabolism?</p>
+          <div class="options-group">
+            <label class="option-label"><input type="radio" name="q0" value="0"> Kidneys</label>
+            <label class="option-label"><input type="radio" name="q0" value="1"> Liver</label>
+            <label class="option-label"><input type="radio" name="q0" value="2"> Lungs</label>
+            <label class="option-label"><input type="radio" name="q0" value="3"> Small Intestine</label>
+          </div>
+        </div>
+
+        <div class="quiz-question">
+          <p>2. What phase of ADME refers to the initial movement of a drug into the systemic blood circulation?</p>
+          <div class="options-group">
+            <label class="option-label"><input type="radio" name="q1" value="0"> Elimination</label>
+            <label class="option-label"><input type="radio" name="q1" value="1"> Distribution</label>
+            <label class="option-label"><input type="radio" name="q1" value="2"> Absorption</label>
+            <label class="option-label"><input type="radio" name="q1" value="3"> Bioavailability</label>
+          </div>
+        </div>
+
+        <button type="button" class="btn-submit" onclick="evaluateQuiz()">Submit Answers</button>
+      </form>
+      
+      <div id="quiz-results"></div>
+    </div>
+  </div>
+
+  <!-- AI Tutor Floating Widget -->
+  <button id="chat-launcher" onclick="toggleChat()">💬</button>
+
+  <div id="chat-window">
+    <div id="chat-header">
+      <span>Health Sciences AI Tutor</span>
+      <button id="chat-close" onclick="toggleChat()">✕</button>
+    </div>
+    <div id="chat-messages">
+      <div class="msg assistant">Hello! I am your AI Health Sciences Tutor. Ask me about drug mechanisms, biological pathways, or quiz questions!</div>
+    </div>
+    <div id="chat-input-area">
+      <input type="text" id="chat-input" placeholder="Ask a question..." onkeypress="handleKeyPress(event)">
+      <button id="chat-send" onclick="sendMessage()">Send</button>
+    </div>
   </div>
 
   <script>
-    // Live Render FastAPI Backend Endpoint
-    const API_URL = "https://custom-chatbot-api-yky8.onrender.com/chat";
+    // Config: Point to your live Render API URL
+    const API_URL = "https://your-render-app-name.onrender.com/chat";
+    let chatHistory = [];
 
-    // Marked.js Configuration
-    marked.setOptions({
-      breaks: true,
-      gfm: true
-    });
-
-    const chatMessages = document.getElementById("chatMessages");
-    const chatForm = document.getElementById("chatForm");
-    const userInput = document.getElementById("userInput");
-    const sendBtn = document.getElementById("sendBtn");
-    const clearBtn = document.getElementById("clearBtn");
-    
-    const chatContainer = document.getElementById("chatContainer");
-    const bubbleLauncher = document.getElementById("bubbleLauncher");
-    const typingIndicator = document.getElementById("typingIndicator");
-
-    let conversationHistory = [];
-    const MAX_HISTORY_MESSAGES = 10;
-
-    function toggleChatWindow() {
-      const isOpen = chatContainer.classList.contains("open");
-      if (isOpen) {
-        chatContainer.classList.remove("open");
-        bubbleLauncher.textContent = "💬";
-      } else {
-        chatContainer.classList.add("open");
-        bubbleLauncher.textContent = "✕";
-        userInput.focus();
+    // Quiz Questions Data Structure
+    const quizData = [
+      {
+        correct: 1,
+        explanation: "The liver contains high concentrations of Cytochrome P450 enzymes responsible for phase I & II biotransformation."
+      },
+      {
+        correct: 2,
+        explanation: "Absorption is defined as the passage of an administered drug across biological membranes into systemic blood circulation."
       }
+    ];
+
+    function evaluateQuiz() {
+      let score = 0;
+      let outputHTML = "<h3>Evaluation Scorecard:</h3>";
+
+      quizData.forEach((item, idx) => {
+        const selected = document.querySelector(`input[name="q${idx}"]:checked`);
+        const userChoice = selected ? parseInt(selected.value) : -1;
+
+        if (userChoice === item.correct) {
+          score++;
+          outputHTML += `<div class="res-pass">✓ Question ${idx + 1}: Passed</div>`;
+        } else {
+          outputHTML += `<div class="res-fail">✗ Question ${idx + 1}: Failed</div>`;
+          outputHTML += `<div class="res-exp"><b>Key Insight:</b> ${item.explanation}</div>`;
+        }
+      });
+
+      outputHTML += `<h4 style="margin-top:1rem;">Total Score: ${score} / ${quizData.length}</h4>`;
+      document.getElementById("quiz-results").innerHTML = outputHTML;
     }
 
-    bubbleLauncher.addEventListener("click", toggleChatWindow);
-
-    function appendMessage(text, sender, isError = false) {
-      const messageDiv = document.createElement("div");
-      messageDiv.classList.add("message", sender);
-      if (isError) messageDiv.classList.add("error");
-
-      if (sender === "bot" && !isError) {
-        messageDiv.innerHTML = marked.parse(text);
-        messageDiv.querySelectorAll("pre code").forEach((block) => {
-          hljs.highlightElement(block);
-        });
-      } else {
-        messageDiv.textContent = text;
-      }
-      
-      chatMessages.insertBefore(messageDiv, typingIndicator);
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-      return messageDiv;
+    function toggleChat() {
+      const windowEl = document.getElementById("chat-window");
+      windowEl.style.display = (windowEl.style.display === "flex") ? "none" : "flex";
     }
 
-    function showTypingIndicator() {
-      typingIndicator.classList.add("visible");
-      chatMessages.scrollTop = chatMessages.scrollHeight;
+    function handleKeyPress(e) {
+      if (e.key === "Enter") sendMessage();
     }
 
-    function hideTypingIndicator() {
-      typingIndicator.classList.remove("visible");
-    }
-
-    clearBtn.addEventListener("click", () => {
-      conversationHistory = [];
-      const allMessages = chatMessages.querySelectorAll(".message:not(.typing)");
-      allMessages.forEach(msg => msg.remove());
-      appendMessage("Conversation reset! How can I help you?", "bot");
-    });
-
-    chatForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      
-      const text = userInput.value.trim();
+    async function sendMessage() {
+      const inputEl = document.getElementById("chat-input");
+      const text = inputEl.value.trim();
       if (!text) return;
 
-      appendMessage(text, "user");
-      conversationHistory.push({ role: "user", content: text });
-      userInput.value = "";
+      const messagesDiv = document.getElementById("chat-messages");
       
-      userInput.disabled = true;
-      sendBtn.disabled = true;
-      showTypingIndicator();
+      // Render User Message
+      messagesDiv.innerHTML += `<div class="msg user">${escapeHTML(text)}</div>`;
+      inputEl.value = "";
+      chatHistory.push({ role: "user", content: text });
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
-      const trimmedHistory = conversationHistory.slice(-MAX_HISTORY_MESSAGES);
+      // Loading Indicator
+      const loadingId = "loading-" + Date.now();
+      messagesDiv.innerHTML += `<div class="msg assistant" id="${loadingId}"><i>Thinking...</i></div>`;
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
       try {
-        const response = await fetch(API_URL, {
+        const res = await fetch(API_URL, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ messages: trimmedHistory }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ history: chatHistory })
         });
-
-        hideTypingIndicator();
-
-        if (!response.ok) {
-          throw new Error(`Server status ${response.status}`);
-        }
-
-        const data = await response.json();
-        const replyText = data.response || "No response received.";
         
-        appendMessage(replyText, "bot");
-        conversationHistory.push({ role: "assistant", content: replyText });
-
-      } catch (error) {
-        console.error("Chat error:", error);
-        hideTypingIndicator();
-        conversationHistory.pop();
-        appendMessage("Could not connect to the assistant.", "bot", true);
-      } finally {
-        userInput.disabled = false;
-        sendBtn.disabled = false;
-        userInput.focus();
+        const data = await res.json();
+        const replyText = data.reply || "No response received.";
+        
+        // Remove loading and render parsed markdown response
+        document.getElementById(loadingId).remove();
+        messagesDiv.innerHTML += `<div class="msg assistant">${marked.parse(replyText)}</div>`;
+        
+        chatHistory.push({ role: "assistant", content: replyText });
+        
+        // Trigger code highlighting if code snippets exist
+        hljs.highlightAll();
+      } catch (err) {
+        document.getElementById(loadingId).remove();
+        messagesDiv.innerHTML += `<div class="msg assistant" style="color:red;">Failed to connect to backend server.</div>`;
       }
-    });
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function escapeHTML(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function switchCourse() {
+      const selected = document.getElementById("course-select").value;
+      const titleEl = document.getElementById("module-title");
+      if(selected === "phs") titleEl.innerText = "Pharmacokinetics: ADME Principles";
+      else if(selected === "nursing") titleEl.innerText = "Patient Care & Dosage Calculations";
+      else if(selected === "med") titleEl.innerText = "Clinical Pathology & Symptom Analysis";
+      else if(selected === "mls") titleEl.innerText = "Hematology & Diagnostic Assays";
+    }
   </script>
 </body>
 </html>

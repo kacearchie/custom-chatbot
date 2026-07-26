@@ -1,66 +1,74 @@
 import os
-from typing import List, Dict, Any
+from typing import List, Dict
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from openai import OpenAI
 
-app = FastAPI(title="Custom Chatbot API")
+app = FastAPI(title="Health Sciences AI Learning Hub")
 
-# Define the explicit domains allowed to talk to this backend
-# Replace these URLs with your actual production frontend and dev origins
+# CORS setup - Update domain list as needed
 ALLOWED_ORIGINS = [
-    "https://your-frontend-domain.com",       # Production domain
-    "https://your-username.github.io",          # GitHub Pages (if applicable)
-    "http://localhost:5500",                    # Local VS Code Live Server
-    "http://127.0.0.1:5500",                   # Local IP testing
+    "https://kacearchie.github.io",  # Live GitHub Pages URL
+    "http://127.0.0.1:5500",         # Local testing
+    "http://localhost:5500"
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Initialize OpenAI client using environment variable
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+SYSTEM_PROMPT = """
+You are an expert Health Sciences and Pharmacology AI Tutor assisting university students in medical, pharmaceutical, and healthcare disciplines.
+
+### Guidelines:
+1. Break down drugs and physiological processes systematically:
+   - Class / Category
+   - Mechanism of Action (MoA)
+   - Therapeutic Uses / Indications
+   - Key Adverse Effects & Contraindications
+2. Break complex pathways (ADME, receptor signaling, inflammatory cascades) into numbered steps.
+3. Keep explanations structured with bold headings, bullet points, and markdown.
+4. Conclude major explanations with 1 short practice question to reinforce learning.
+5. You are an academic tutor. Do not offer clinical diagnoses or personal medical advice.
+"""
 
 class Message(BaseModel):
-    role: str = Field(..., description="Role of the speaker: 'system', 'user', or 'assistant'")
-    content: str = Field(..., description="Text content of the message")
+    role: str
+    content: str
 
 class ChatRequest(BaseModel):
-    messages: List[Message]
+    history: List[Message]
 
 @app.get("/")
 def health_check():
-    """Health check endpoint used by uptime monitors to keep Render awake."""
-    return {"status": "ok", "message": "FastAPI Chatbot Backend is running."}
+    return {"status": "healthy", "service": "Health Sciences AI API"}
 
 @app.post("/chat")
-def chat_endpoint(request: ChatRequest):
-    """Processes incoming chat history and returns the gpt-4o-mini completion."""
-    try:
-        # System prompt setting the assistant persona
-        system_instruction = {
-            "role": "system", 
-            "content": "You are a helpful, concise, and professional AI assistant. Respond using Markdown formatting where appropriate."
-        }
-        
-        # Combine system prompt with incoming user history
-        full_messages = [system_instruction] + [msg.model_dump() for msg in request.messages]
+async def chat_endpoint(request: ChatRequest):
+    if not os.getenv("OPENAI_API_KEY"):
+        raise HTTPException(status_code=500, detail="OPENAI_API_KEY environment variable missing.")
 
-        completion = client.chat.completions.create(
+    try:
+        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        # Append up to last 10 messages for conversation state
+        for msg in request.history[-10:]:
+            messages.append({"role": msg.role, "content": msg.content})
+
+        response = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=full_messages,
-            temperature=0.7,
-            max_tokens=500
+            messages=messages,
+            temperature=0.7
         )
 
-        reply_content = completion.choices[0].message.content
-        return {"response": reply_content}
-
+        reply = response.choices[0].message.content
+        return {"reply": reply}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
